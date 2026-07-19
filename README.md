@@ -13,8 +13,8 @@ A modern web-based application that analyzes social media profile characteristic
 
 ## 📷 Preview
 
-<img width="100%" alt="Fake Profile Detector" <img width="409" height="491" alt="image" src="https://github.com/user-attachments/assets/dc70bfaa-2c55-4725-aa8f-a0c983b07bcf" />
-src="https://via.placeholder.com/1000x500?text=Fake+Profile+Detector+Screenshot">
+<img width="409" height="491" alt="image" src="https://github.com/user-attachments/assets/0b8a91fb-af54-4253-b9b0-e5872d0485ba" />
+
 
 > Replace the above image with a screenshot of your project.
 
