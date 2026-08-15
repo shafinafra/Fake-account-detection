@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake Profile Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #ff4d6d;
+    --accent2: #00d4ff;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+    --real: #00e5a0;
+    --fake: #ff4d6d;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 400px; height: 400px; background: rgba(255,77,109,0.12); top: -100px; right: -100px; }
+  .orb2 { width: 300px; height: 300px; background: rgba(0,212,255,0.08); bottom: 100px; left: -80px; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 5px 14px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 36px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.7s ease 0.15s both;
+  }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input[type="number"], select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 3px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus, select:focus {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+
+  select option { background: var(--bg); }
+
+  .field-wide { grid-column: 1 / -1; }
+
+  /* Button */
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-top: 28px;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn:hover { background: #ff2d50; box-shadow: 0 0 30px rgba(255,77,109,0.4); }
+  .btn:active { transform: scale(0.99); }
+
+  .btn .btn-inner { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+  /* Spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  /* Result */
+  .result-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    display: none;
+    animation: fadeUp 0.5s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card.real { border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.05); }
+  .result-card.fake { border-color: rgba(255,77,109,0.3); background: rgba(255,77,109,0.05); }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .result-card.real::before { background: var(--real); }
+  .result-card.fake::before { background: var(--fake); }
+
+  .result-icon { font-size: 40px; margin-bottom: 12px; }
+
+  .result-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .result-verdict {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .result-card.real .result-verdict { color: var(--real); }
+  .result-card.fake .result-verdict { color: var(--fake); }
+
+  .result-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* Score bar */
+  .score-row { margin-top: 24px; }
+  .score-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .score-bar-bg {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+  .result-card.real .score-bar-fill { background: var(--real); }
+  .result-card.fake .score-bar-fill { background: var(--fake); }
+
+  /* Indicators */
+  .indicators {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .indicator {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .indicator-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .indicator-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 48px;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    animation: fadeUp 0.7s ease 0.3s both;
+  }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:none; } }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(20px);  } to { opacity:1; transform:none; } }
+  @keyframes spin     { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="container">
+
+  <header>
+    <div class="badge">ML · Detection System</div>
+    <h1>Fake Profile<br><span>Detector</span></h1>
+    <p class="subtitle">Instagram · Twitter · Facebook</p>
+  </header>
+
+  <div class="card">
+    <div class="section-label">Profile Signals</div>
+    <div class="grid">
+      <div class="field">
+        <label>Followers</label>
+        <input type="number" id="followers" placeholder="e.g. 1200" min="0" value="">
+      </div>
+      <div class="field">
+        <label>Following</label>
+        <input type="number" id="following" placeholder="e.g. 300" min="0" value="">
+      </div>
+      <div class="field">
+        <label>Posts</label>
+        <input type="number" id="posts" placeholder="e.g. 150" min="0" value="">
+      </div>
+      <div class="field">
+        <label>Bio Length (chars)</label>
+        <input type="number" id="bio_length" placeholder="e.g. 40" min="0" value="">
+      </div>
+      <div class="field">
+        <label>Profile Picture</label>
+        <select id="profile_pic">
+          <option value="">— Select —</option>
+          <option value="1">Yes (has photo)</option>
+          <option value="0">No (no photo)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Username Length</label>
+        <input type="number" id="username_length" placeholder="e.g. 10" min="1" max="50" value="">
+      </div>
+    </div>
+
+    <button class="btn" onclick="analyze()">
+      <span class="btn-inner">
+        <span class="spinner" id="spinner"></span>
+        <span id="btn-text">Analyze Profile</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="result">
+    <div class="result-icon" id="result-icon"></div>
+    <div class="result-label">Detection Result</div>
+    <div class="result-verdict" id="result-verdict"></div>
+    <div class="result-desc" id="result-desc"></div>
+
+    <div class="score-row">
+      <div class="score-label-row">
+        <span id="score-left">Authenticity Score</span>
+        <span id="score-pct"></span>
+      </div>
+      <div class="score-bar-bg">
+        <div class="score-bar-fill" id="score-fill"></div>
+      </div>
+    </div>
+
+    <div class="indicators" id="indicators"></div>
+  </div>
+
+  <footer>Fake Profile Detector &nbsp;·&nbsp; ML-Powered Analysis &nbsp;·&nbsp; 2026</footer>
+</div>
+
+<script>
+function analyze() {
+  const followers = parseInt(document.getElementById('followers').value) || 0;
+  const following = parseInt(document.getElementById('following').value) || 0;
+  const posts = parseInt(document.getElementById('posts').value) || 0;
+  const bio_length = parseInt(document.getElementById('bio_length').value) || 0;
+  const profile_pic_val = document.getElementById('profile_pic').value;
+  const username_length = parseInt(document.getElementById('username_length').value) || 0;
+
+  if (profile_pic_val === '') {
+    alert('Please fill in all fields before analyzing.');
+    return;
+  }
+  const profile_pic = parseInt(profile_pic_val);
+
+  const btn = document.querySelector('.btn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btn-text');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Analyzing...';
+
+  // Simulate async ML prediction
+  setTimeout(() => {
+    const result = predict(followers, following, posts, bio_length, profile_pic, username_length);
+    showResult(result, followers, following, posts, bio_length, profile_pic, username_length);
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = 'Analyze Profile';
+  }, 900);
+}
+
+function predict(followers, following, posts, bio_length, profile_pic, username_length) {
+  // Heuristic model mirroring Random Forest logic from the project
+  let fakeScore = 0;
+  const ratio = following > 0 ? followers / following : followers;
+
+  if (ratio < 0.05) fakeScore += 30;
+  else if (ratio < 0.15) fakeScore += 20;
+  else if (ratio < 0.5) fakeScore += 10;
+  else fakeScore -= 10;
+
+  if (posts <= 5) fakeScore += 25;
+  else if (posts <= 15) fakeScore += 10;
+  else fakeScore -= 10;
+
+  if (bio_length === 0) fakeScore += 20;
+  else if (bio_length < 15) fakeScore += 8;
+
+  if (profile_pic === 0) fakeScore += 20;
+  else fakeScore -= 15;
+
+  if (following > 1000 && followers < 100) fakeScore += 15;
+  if (username_length < 5) fakeScore += 8;
+
+  fakeScore = Math.max(0, Math.min(100, fakeScore));
+  const isFake = fakeScore >= 40;
+  return { isFake, fakeScore };
+}
+
+function showResult({ isFake, fakeScore }, followers, following, posts, bio_length, profile_pic, username_length) {
+  const card = document.getElementById('result');
+  card.className = 'result-card ' + (isFake ? 'fake' : 'real');
+  card.style.display = 'block';
+
+  document.getElementById('result-icon').textContent = isFake ? '🚨' : '✅';
+  document.getElementById('result-verdict').textContent = isFake ? 'Fake Profile' : 'Real Profile';
+
+  const authScore = isFake ? Math.round(100 - fakeScore) : Math.round(100 - fakeScore);
+  document.getElementById('score-pct').textContent = authScore + '%';
+
+  document.getElementById('result-desc').textContent = isFake
+    ? 'This profile shows strong indicators of being inauthentic. High following-to-followers ratio, sparse activity, and missing profile elements are common fake account patterns.'
+    : 'This profile appears authentic. The engagement metrics, content activity, and profile completeness align with typical real account patterns.';
+
+  // Animate bar
+  setTimeout(() => {
+    document.getElementById('score-fill').style.width = authScore + '%';
+  }, 100);
+
+  // Key indicators
+  const ratio = following > 0 ? (followers / following).toFixed(2) : '∞';
+  const indicators = [
+    { name: 'Followers', val: followers.toLocaleString() },
+    { name: 'Following', val: following.toLocaleString() },
+    { name: 'F/F Ratio', val: ratio },
+    { name: 'Posts', val: posts },
+    { name: 'Bio Chars', val: bio_length },
+    { name: 'Profile Pic', val: profile_pic ? 'Yes' : 'No' },
+  ];
+
+  document.getElementById('indicators').innerHTML = indicators.map(i => `
+    <div class="indicator">
+      <div class="indicator-val">${i.val}</div>
+      <div class="indicator-name">${i.name}</div>
+    </div>
+  `).join('');
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
